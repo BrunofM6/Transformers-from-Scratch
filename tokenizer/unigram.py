@@ -1,11 +1,13 @@
 import math
 from collections import defaultdict
 from tokenizer.bpe import BPTokenizer
+from tokenizer.pre_tokenize import PreTokenizer
 
 class UnigramTokenizer:
     def __init__(self, max_piece_len: int = 8):
         self.vocab: dict[str, float] = {}
         self.max_piece_len = max_piece_len
+        self.pretok = PreTokenizer()
 
     def _seed_vocab_all_substrings(self, word_freqs: dict[str, int]) -> dict[str, int]:
         candidates = defaultdict(int)
@@ -21,13 +23,13 @@ class UnigramTokenizer:
     
     def _seed_vocab_from_bpe(self, word_freqs: dict[str, int], bpe_vocab_size: int) -> dict[str, int]:
         corpus_text = " ".join(word for word, freq in word_freqs.items() for _ in range(freq))
-        bpe = BPTokenizer()
+        bpe = BPTokenizer(pretokenize=True)
         bpe.train(corpus_text, vocab_size=bpe_vocab_size)
         candidates = defaultdict(int)
         for word, freq in word_freqs.items():
             ids = bpe.encode(word)
             for id_ in ids:
-                piece_str = bpe.vocab[id_].decode("utf-8", errors="ignore")
+                piece_str = bpe.vocab[id_].decode("utf-8", errors="ignore") # if ID is partial UTF-8, might get discarded
                 if piece_str:
                     candidates[piece_str] += freq
         for word in word_freqs:
@@ -77,6 +79,7 @@ class UnigramTokenizer:
                     piece_counts[ch] = 1e-6
             total = sum(piece_counts.values())
             vocab = {p: math.log(c / total) for p, c in piece_counts.items() if c > 0}
+            # overall count used as proxy, real implementation uses total likelihood
             removable = sorted(
                 (p for p in vocab if len(p) > 1),
                 key=lambda p: piece_counts[p]
@@ -89,6 +92,29 @@ class UnigramTokenizer:
                 del vocab[p]
         self.vocab = vocab
 
+    def train_from_text(self, text: str, vocab_size: int, **kwargs):
+        word_freqs = self.pretok.build_word_freq(text)
+        self.train(word_freqs, vocab_size, **kwargs)
+
     def encode(self, word: str) -> list[str]:
         pieces, _ = self._viterbi_segment(word, self.vocab)
         return pieces
+    
+class UnigramWithIds:
+    def __init__(self, unigram: UnigramTokenizer):
+        self.unigram = unigram
+        self.pretok = unigram.pretok
+        pieces_sorted = sorted(unigram.vocab.keys())
+        self.piece_to_id = {p: i for i, p in enumerate(pieces_sorted)}
+        self.id_to_piece = {i: p for p, i in self.piece_to_id.items()}
+
+    def encode(self, text: str) -> list[int]:
+        chunks = self.pretok.pre_tokenize(text)
+        ids = []
+        for chunk in chunks:
+            pieces = self.unigram.encode(chunk)
+            ids.extend(self.piece_to_id[p] for p in pieces)
+        return ids
+
+    def decode(self, ids: list[int]) -> str:
+        return "".join(self.id_to_piece[i] for i in ids)
