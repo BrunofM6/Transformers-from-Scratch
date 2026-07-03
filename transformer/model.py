@@ -22,11 +22,9 @@ class MultiHeadAttention(nn.Module()):
     def __init__(self, d_model: int, n_heads: int):
         super().__init__()
         assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
-
         self.d_model = d_model
         self.n_heads = n_heads
         self.d_k = d_model // n_heads
-
         self.W_q = nn.Linear(d_model, d_model, bias=False)
         self.W_k = nn.Linear(d_model, d_model, bias=False)
         self.W_v = nn.Linear(d_model, d_model, bias=False)
@@ -34,11 +32,9 @@ class MultiHeadAttention(nn.Module()):
 
     def forward(self, x: torch.Tensor, causal: bool = True) -> torch.Tensor:
         batch, seq_len, _ = x.shape
-
-        #q = self.W_q(x)
+        q = self.W_q(x)
         k = self.W_k(x)
         v = self.W_v(x)
-
         q = q.view(batch, seq_len, self.n_heads, self.d_k).transpose(1, 2)
         k = k.view(batch, seq_len, self.n_heads, self.d_k).transpose(1, 2)
         v = v.view(batch, seq_len, self.n_heads, self.d_k).transpose(1, 2)
