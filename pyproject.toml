@@ -17,4 +17,4 @@ dev = [
 ]
 
 [tool.setuptools]
-packages = ["tokenizer"]
+packages = ["tokenizer", "transformer"]
