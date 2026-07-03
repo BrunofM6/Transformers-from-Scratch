@@ -1,6 +1,6 @@
 import os
 import pytest
-from bpe import BPTokenizer
+from tokenizer.bpe import BPTokenizer
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 SHAKESPEARE_PATH = os.path.join(DATA_DIR, "tiny-shakespeare.txt")

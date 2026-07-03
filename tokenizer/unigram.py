@@ -1,7 +1,6 @@
 import math
 from collections import defaultdict
-
-from bpe import BPTokenizer
+from tokenizer.bpe import BPTokenizer
 
 class UnigramTokenizer:
     def __init__(self, max_piece_len: int = 8):
@@ -64,6 +63,7 @@ class UnigramTokenizer:
             candidates = self._seed_vocab_all_substrings(word_freqs)
         else:
             raise ValueError(f"Unknown seed_method: {seed_method}")
+        required_chars = {ch for word in word_freqs for ch in word}
         total = sum(candidates.values())
         vocab = {p: math.log(c / total) for p, c in candidates.items() if c > 0}
         while len(vocab) > vocab_size:
@@ -72,6 +72,9 @@ class UnigramTokenizer:
                 pieces, _ = self._viterbi_segment(word, vocab)
                 for p in pieces:
                     piece_counts[p] += freq
+            for ch in required_chars:
+                if ch not in piece_counts:
+                    piece_counts[ch] = 1e-6
             total = sum(piece_counts.values())
             vocab = {p: math.log(c / total) for p, c in piece_counts.items() if c > 0}
             removable = sorted(

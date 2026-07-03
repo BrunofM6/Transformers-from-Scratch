@@ -1,12 +1,9 @@
 import math
 import pytest
-from unigram import UnigramTokenizer
-from pre_tokenize import PreTokenizer
-
-# --- Unit Tests ---
+from tokenizer.unigram import UnigramTokenizer
+from tokenizer.pre_tokenize import PreTokenizer
 
 # viterbi_segment
-
 def test_viterbi_segment_simple_vocab():
     tok = UnigramTokenizer(max_piece_len=8)
     vocab = {
@@ -128,9 +125,8 @@ def test_encode_unseen_word_still_covered_by_fallback():
     word_freqs = {"hello": 10, "world": 8}
     tok = UnigramTokenizer(max_piece_len=6)
     tok.train(word_freqs, vocab_size=15, seed_method="all_substrings")
-    pieces = tok.encode("xyz")
-    assert "".join(pieces) == "xyz"
-
+    pieces = tok.encode("wold")  # w,o,l,d seen, but "wold" no
+    assert "".join(pieces) == "wold"
 
 # real corpus
 def test_train_on_real_corpus_sample():
